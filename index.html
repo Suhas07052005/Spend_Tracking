@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Spend Tracker 💸</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',sans-serif;background:#0f0f1a;color:#e0e0f0;min-height:100vh;overflow-x:hidden}
+
+  /* NAV */
+  .navbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#16162a;border-bottom:1px solid #2a2a4a;position:sticky;top:0;z-index:100}
+  .nav-title{font-size:1.2rem;font-weight:700;color:#fff}
+  .nav-actions{display:flex;gap:10px}
+  .nav-btn{background:#1e1e36;border:1px solid #2a2a4a;color:#a0a0c0;padding:8px 14px;border-radius:10px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.8rem;display:flex;align-items:center;gap:6px;transition:all .2s}
+  .nav-btn:hover{background:#2a2a4a;color:#fff}
+  .nav-btn .icon{font-size:1rem}
+
+  /* CALENDAR BAR */
+  .cal-bar{display:flex;align-items:center;justify-content:center;padding:14px 20px;gap:12px}
+  .cal-btn{background:#1e1e36;border:1px solid #2a2a4a;color:#a0a0c0;padding:8px 16px;border-radius:25px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.85rem;display:flex;align-items:center;gap:8px;transition:all .2s}
+  .cal-btn:hover{border-color:#4a9eff;color:#4a9eff}
+  #dateInput{background:#1e1e36;border:1px solid #2a2a4a;color:#e0e0f0;padding:8px 14px;border-radius:25px;font-family:'Poppins',sans-serif;font-size:0.85rem;outline:none;transition:all .2s}
+  #dateInput:focus{border-color:#4a9eff;box-shadow:0 0 0 3px rgba(74,158,255,.15)}
+  .selected-date-label{font-size:0.85rem;color:#a0a0c0}
+  .selected-date-label span{color:#4a9eff;font-weight:600}
+
+  /* ENTRIES LIST */
+  .entries-section{padding:10px 20px 100px;max-width:600px;margin:0 auto}
+  .entry-card{background:#16162a;border:1px solid #2a2a4a;border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .entry-info{flex:1}
+  .entry-amount{font-size:1.1rem;font-weight:700;color:#4a9eff}
+  .entry-detail{font-size:0.8rem;color:#a0a0c0;margin-top:2px}
+  .entry-date{font-size:0.75rem;color:#606080;margin-top:2px}
+  .entry-actions{display:flex;gap:8px}
+  .btn-icon{background:none;border:none;cursor:pointer;font-size:1rem;padding:6px;border-radius:8px;transition:background .2s}
+  .btn-edit{color:#ffd700}
+  .btn-edit:hover{background:#2a2a1a}
+  .btn-delete{color:#ff6b6b}
+  .btn-delete:hover{background:#2a1a1a}
+  .empty-state{text-align:center;color:#404060;padding:60px 20px;font-size:0.9rem}
+  .empty-state .empty-icon{font-size:3rem;margin-bottom:12px}
+
+  /* FAB */
+  .fab{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#4a9eff,#2266cc);border:none;color:#fff;font-size:2rem;cursor:pointer;box-shadow:0 6px 24px rgba(74,158,255,.5);transition:transform .2s,box-shadow .2s;z-index:99}
+  .fab:hover{transform:translateX(-50%) scale(1.1);box-shadow:0 8px 30px rgba(74,158,255,.7)}
+  .fab:active{transform:translateX(-50%) scale(0.95)}
+
+  /* OVERLAY */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;justify-content:center;align-items:center;padding:20px}
+  .overlay.active{display:flex}
+
+  /* POPUP */
+  .popup{background:#16162a;border:1px solid #2a2a4a;border-radius:20px;width:100%;max-width:420px;padding:28px 24px;position:relative}
+  .popup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .popup-title{font-size:1.1rem;font-weight:600;color:#fff}
+  .step-indicator{font-size:0.75rem;color:#4a9eff;background:rgba(74,158,255,.1);padding:4px 10px;border-radius:20px}
+  .popup-close{background:none;border:none;color:#606080;font-size:1.3rem;cursor:pointer;padding:4px;border-radius:8px;transition:color .2s}
+  .popup-close:hover{color:#fff}
+  .popup-label{font-size:0.85rem;color:#a0a0c0;margin-bottom:8px}
+  .popup-input{width:100%;background:#0f0f1a;border:1.5px solid #2a2a4a;color:#e0e0f0;padding:12px 16px;border-radius:25px;font-family:'Poppins',sans-serif;font-size:1rem;outline:none;transition:all .2s}
+  .popup-input:focus{border-color:#4a9eff;box-shadow:0 0 0 3px rgba(74,158,255,.15)}
+  .suggestions-dropdown{background:#1e1e36;border:1px solid #2a2a4a;border-radius:12px;margin-top:6px;overflow:hidden;display:none}
+  .suggestion-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .2s;font-size:0.85rem}
+  .suggestion-item:hover{background:#2a2a4a}
+  .suggestion-del{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:0.9rem;padding:2px 6px;border-radius:6px}
+  .popup-footer{display:flex;gap:10px;margin-top:20px}
+  .btn-back{flex:1;background:#1e1e36;border:1px solid #2a2a4a;color:#a0a0c0;padding:12px;border-radius:25px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.9rem;transition:all .2s}
+  .btn-back:hover{background:#2a2a4a;color:#fff}
+  .btn-next{flex:2;background:linear-gradient(135deg,#4a9eff,#2266cc);border:none;color:#fff;padding:12px;border-radius:25px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.9rem;font-weight:600;transition:all .2s}
+  .btn-next:hover{opacity:.9;box-shadow:0 4px 16px rgba(74,158,255,.4)}
+
+  /* CONFIRM POPUP */
+  .confirm-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2a2a4a;font-size:0.9rem}
+  .confirm-row:last-child{border-bottom:none}
+  .confirm-label{color:#a0a0c0}
+  .confirm-value{color:#fff;font-weight:600}
+  .confirm-amount{color:#4a9eff;font-size:1.3rem;font-weight:700}
+
+  /* FULLSCREEN OVERLAY */
+  .fs-overlay{display:none;position:fixed;inset:0;background:#0f0f1a;z-index:300;flex-direction:column}
+  .fs-overlay.active{display:flex}
+  .fs-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#16162a;border-bottom:1px solid #2a2a4a}
+  .fs-title{font-size:1.1rem;font-weight:700;color:#fff}
+  .btn-close-fs{background:none;border:none;color:#a0a0c0;font-size:1.4rem;cursor:pointer;padding:6px;border-radius:8px;transition:color .2s}
+  .btn-close-fs:hover{color:#fff}
+  .fs-body{flex:1;overflow-y:auto;padding:20px}
+
+  /* TABLE */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:0.85rem}
+  th{background:#16162a;color:#a0a0c0;padding:12px 14px;text-align:left;border-bottom:1px solid #2a2a4a;white-space:nowrap}
+  td{padding:12px 14px;border-bottom:1px solid #1e1e36;color:#e0e0f0;vertical-align:middle}
+  tr:hover td{background:#16162a}
+  .amount-cell{color:#4a9eff;font-weight:600}
+
+  /* ANALYSIS TABS */
+  .analysis-tabs{display:flex;gap:8px;padding:16px 20px;background:#16162a;border-bottom:1px solid #2a2a4a}
+  .tab-btn{flex:1;padding:10px;background:#0f0f1a;border:1px solid #2a2a4a;color:#a0a0c0;border-radius:12px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:500;transition:all .2s}
+  .tab-btn.active{background:linear-gradient(135deg,#4a9eff,#2266cc);border-color:transparent;color:#fff}
+  .tab-content{display:none;padding:20px}
+  .tab-content.active{display:block}
+
+  /* ANALYSIS CARDS */
+  .stat-card{background:#16162a;border:1px solid #2a2a4a;border-radius:14px;padding:18px;margin-bottom:14px}
+  .stat-label{font-size:0.8rem;color:#a0a0c0;margin-bottom:6px}
+  .stat-value{font-size:1.6rem;font-weight:700;color:#4a9eff}
+  .stat-sub{font-size:0.8rem;color:#a0a0c0;margin-top:4px}
+  .chart-card{background:#16162a;border:1px solid #2a2a4a;border-radius:14px;padding:18px;margin-bottom:14px}
+  .chart-title{font-size:0.9rem;font-weight:600;color:#fff;margin-bottom:14px}
+  .chart-wrap{position:relative;height:220px}
+  .month-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
+  .month-nav button{background:#1e1e36;border:1px solid #2a2a4a;color:#a0a0c0;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;transition:all .2s}
+  .month-nav button:hover{background:#2a2a4a;color:#fff}
+  .month-nav span{font-size:0.95rem;font-weight:600;color:#fff;min-width:120px;text-align:center}
+  .highest-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .highest-item{display:flex;justify-content:space-between;align-items:center;background:#0f0f1a;border-radius:10px;padding:10px 14px;font-size:0.85rem}
+  .highest-day{color:#a0a0c0}
+  .highest-amt{color:#4a9eff;font-weight:600}
+  .highest-detail{color:#606080;font-size:0.75rem}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#4a9eff;color:#fff;padding:10px 24px;border-radius:25px;font-size:0.85rem;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+
+  @media(max-width:480px){
+    .navbar{padding:12px 14px}
+    .nav-btn span.label{display:none}
+    .fs-body{padding:14px}
+    .tab-content{padding:14px}
+    .analysis-tabs{padding:12px 14px}
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-title">💸 Spend Tracker</div>
+  <div class="nav-actions">
+    <button class="nav-btn" onclick="openTable()"><span class="icon">📋</span><span class="label">Table</span></button>
+    <button class="nav-btn" onclick="openAnalysis()"><span class="icon">📊</span><span class="label">Analysis</span></button>
+  </div>
+</nav>
+
+<!-- CALENDAR BAR -->
+<div class="cal-bar">
+  <button class="cal-btn" onclick="toggleDatePicker()">📅 <span id="calBtnLabel">Select Date</span></button>
+  <input type="date" id="dateInput" style="display:none" onchange="onDateChange(this.value)"/>
+</div>
+<div style="text-align:center;padding:0 20px 10px;font-size:0.82rem;color:#606080">
+  Showing entries for: <span id="activeDateLabel" style="color:#4a9eff;font-weight:600">All</span>
+  <button onclick="clearDateFilter()" id="clearDateBtn" style="display:none;background:none;border:none;color:#ff6b6b;cursor:pointer;margin-left:8px;font-size:0.8rem">✕ Clear</button>
+</div>
+
+<!-- ENTRIES -->
+<div class="entries-section" id="entriesList">
+  <div class="empty-state"><div class="empty-icon">💳</div>No entries yet.<br/>Tap + to add your first spend!</div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openStep(1)">+</button>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- STEP 1: AMOUNT -->
+<div class="overlay" id="overlay1">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">How much did you spend?</div>
+      <div class="step-indicator">Step 1 of 3</div>
+    </div>
+    <button class="popup-close" onclick="closeAll()">✕</button>
+    <div class="popup-label">Amount (₹)</div>
+    <input class="popup-input" type="number" id="inp_amount" placeholder="e.g. 100" min="0" step="0.01"/>
+    <div class="popup-footer">
+      <button class="btn-back" onclick="closeAll()">Cancel</button>
+      <button class="btn-next" onclick="goStep2()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: WHAT -->
+<div class="overlay" id="overlay2">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">What did you spend on?</div>
+      <div class="step-indicator">Step 2 of 3</div>
+    </div>
+    <button class="popup-close" onclick="closeAll()">✕</button>
+    <div class="popup-label">Item / Description</div>
+    <input class="popup-input" type="text" id="inp_what" placeholder="e.g. Biryani" autocomplete="off" oninput="showSuggestions('what',this.value)" onblur="hideSuggestionsDelayed('what')"/>
+    <div class="suggestions-dropdown" id="sugg_what"></div>
+    <div class="popup-footer">
+      <button class="btn-back" onclick="openStep(1)">← Back</button>
+      <button class="btn-next" onclick="goStep3()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: WHERE -->
+<div class="overlay" id="overlay3">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">Where did you spend?</div>
+      <div class="step-indicator">Step 3 of 3</div>
+    </div>
+    <button class="popup-close" onclick="closeAll()">✕</button>
+    <div class="popup-label">Location / Place</div>
+    <input class="popup-input" type="text" id="inp_where" placeholder="e.g. Hotel" autocomplete="off" oninput="showSuggestions('where',this.value)" onblur="hideSuggestionsDelayed('where')"/>
+    <div class="suggestions-dropdown" id="sugg_where"></div>
+    <div class="popup-footer">
+      <button class="btn-back" onclick="openStep(2)">← Back</button>
+      <button class="btn-next" onclick="goConfirm()">Review →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="overlay" id="overlayConfirm">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">Confirm Entry</div>
+      <div class="step-indicator">✓ Review</div>
+    </div>
+    <button class="popup-close" onclick="closeAll()">✕</button>
+    <div style="margin:8px 0 20px">
+      <div class="confirm-row"><span class="confirm-label">Amount</span><span class="confirm-value confirm-amount" id="conf_amount"></span></div>
+      <div class="confirm-row"><span class="confirm-label">What</span><span class="confirm-value" id="conf_what"></span></div>
+      <div class="confirm-row"><span class="confirm-label">Where</span><span class="confirm-value" id="conf_where"></span></div>
+      <div class="confirm-row"><span class="confirm-label">Date</span><span class="confirm-value" id="conf_date"></span></div>
+    </div>
+    <div class="popup-footer">
+      <button class="btn-back" onclick="openStep(3)">← Edit</button>
+      <button class="btn-next" onclick="saveEntry()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT POPUP -->
+<div class="overlay" id="overlayEdit">
+  <div class="popup">
+    <div class="popup-header">
+      <div class="popup-title">Edit Entry</div>
+    </div>
+    <button class="popup-close" onclick="closeEdit()">✕</button>
+    <div class="popup-label" style="margin-top:8px">Amount (₹)</div>
+    <input class="popup-input" type="number" id="edit_amount" style="margin-bottom:12px"/>
+    <div class="popup-label">What</div>
+    <input class="popup-input" type="text" id="edit_what" style="margin-bottom:12px"/>
+    <div class="popup-label">Where</div>
+    <input class="popup-input" type="text" id="edit_where" style="margin-bottom:12px"/>
+    <div class="popup-label">Date</div>
+    <input class="popup-input" type="date" id="edit_date"/>
+    <div class="popup-footer">
+      <button class="btn-back" onclick="closeEdit()">Cancel</button>
+      <button class="btn-next" onclick="saveEdit()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE OVERLAY -->
+<div class="fs-overlay" id="tableOverlay">
+  <div class="fs-header">
+    <div class="fs-title">📋 All Entries</div>
+    <button class="btn-close-fs" onclick="closeTable()">✕</button>
+  </div>
+  <div class="fs-body">
+    <div class="table-wrap">
+      <table id="dataTable">
+        <thead><tr><th>#</th><th>Date</th><th>Amount</th><th>What</th><th>Where</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ANALYSIS OVERLAY -->
+<div class="fs-overlay" id="analysisOverlay">
+  <div class="fs-header">
+    <div class="fs-title">📊 Analysis</div>
+    <button class="btn-close-fs" onclick="closeAnalysis()">✕</button>
+  </div>
+  <div class="analysis-tabs">
+    <button class="tab-btn active" onclick="switchTab('daily')">Daily</button>
+    <button class="tab-btn" onclick="switchTab('weekly')">Weekly</button>
+    <button class="tab-btn" onclick="switchTab('monthly')">Monthly</button>
+  </div>
+
+  <!-- DAILY TAB -->
+  <div class="tab-content active" id="tab_daily">
+    <div class="stat-card">
+      <div class="stat-label">Today's Total Spend</div>
+      <div class="stat-value" id="daily_total">₹0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Highest Spend Today</div>
+      <div class="stat-value" id="daily_highest">₹0</div>
+      <div class="stat-sub" id="daily_highest_sub"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Spending by "What" (Today)</div>
+      <div class="chart-wrap"><canvas id="pieWhat"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Spending by "Where" (Today)</div>
+      <div class="chart-wrap"><canvas id="pieWhere"></canvas></div>
+    </div>
+  </div>
+
+  <!-- WEEKLY TAB -->
+  <div class="tab-content" id="tab_weekly">
+    <div class="stat-card">
+      <div class="stat-label">Total Weekly Spend</div>
+      <div class="stat-value" id="weekly_total">₹0</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Daily Totals This Week (Mon–Sun)</div>
+      <div class="chart-wrap"><canvas id="barWeekly"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Highest Spend Per Day</div>
+      <div class="highest-list" id="weekly_highest_list"></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY TAB -->
+  <div class="tab-content" id="tab_monthly">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span id="monthLabel"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Monthly Spend</div>
+      <div class="stat-value" id="monthly_total">₹0</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Daily Totals This Month</div>
+      <div class="chart-wrap"><canvas id="barMonthly"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Highest Spend Per Day</div>
+      <div class="highest-list" id="monthly_highest_list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let entries = JSON.parse(localStorage.getItem('st_entries') || '[]');
+let suggestions = JSON.parse(localStorage.getItem('st_suggestions') || '{"what":[],"where":[]}');
+let activeDate = null; // filter date string YYYY-MM-DD
+let editingId = null;
+let currentMonthOffset = 0;
+let charts = {};
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────────
+function save(){
+  localStorage.setItem('st_entries', JSON.stringify(entries));
+  localStorage.setItem('st_suggestions', JSON.stringify(suggestions));
+}
+
+// ─── DATE HELPERS ─────────────────────────────────────────────────────────────
+function todayStr(){
+  return new Date().toISOString().split('T')[0];
+}
+function fmtDate(d){
+  if(!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+function getId(){ return Date.now() + Math.random().toString(36).slice(2); }
+
+// ─── DATE PICKER ──────────────────────────────────────────────────────────────
+function toggleDatePicker(){
+  const inp = document.getElementById('dateInput');
+  inp.style.display = inp.style.display === 'none' ? 'inline-block' : 'none';
+  if(inp.style.display !== 'none') inp.focus();
+}
+function onDateChange(val){
+  activeDate = val;
+  document.getElementById('calBtnLabel').textContent = fmtDate(val);
+  document.getElementById('activeDateLabel').textContent = fmtDate(val);
+  document.getElementById('clearDateBtn').style.display = 'inline';
+  document.getElementById('dateInput').style.display = 'none';
+  renderEntries();
+}
+function clearDateFilter(){
+  activeDate = null;
+  document.getElementById('calBtnLabel').textContent = 'Select Date';
+  document.getElementById('activeDateLabel').textContent = 'All';
+  document.getElementById('clearDateBtn').style.display = 'none';
+  renderEntries();
+}
+
+// ─── RENDER ENTRIES ───────────────────────────────────────────────────────────
+function renderEntries(){
+  const list = document.getElementById('entriesList');
+  let filtered = activeDate ? entries.filter(e=>e.date===activeDate) : entries;
+  filtered = [...filtered].sort((a,b)=>b.id>a.id?1:-1);
+  if(filtered.length===0){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">💳</div>No entries yet.<br/>Tap + to add your first spend!</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(e=>`
+    <div class="entry-card" id="ec_${e.id}">
+      <div class="entry-info">
+        <div class="entry-amount">₹${parseFloat(e.amount).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="entry-detail">${e.what} · ${e.where}</div>
+        <div class="entry-date">${fmtDate(e.date)}</div>
+      </div>
+      <div class="entry-actions">
+        <button class="btn-icon btn-edit" onclick="openEdit('${e.id}')">✏️</button>
+        <button class="btn-icon btn-delete" onclick="deleteEntry('${e.id}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteEntry(id){
+  entries = entries.filter(e=>e.id!==id);
+  save(); renderEntries();
+  showToast('Entry deleted');
+}
+
+// ─── POPUP FLOW ────────────────────────────────────────────────────────────────
+function openStep(n){
+  closeAll(true);
+  document.getElementById('overlay'+n).classList.add('active');
+}
+function closeAll(silent){
+  ['overlay1','overlay2','overlay3','overlayConfirm'].forEach(id=>{
+    document.getElementById(id).classList.remove('active');
+  });
+}
+function goStep2(){
+  const amt = document.getElementById('inp_amount').value.trim();
+  if(!amt || isNaN(amt) || parseFloat(amt)<=0){ showToast('Enter a valid amount'); return; }
+  openStep(2);
+}
+function goStep3(){
+  const w = document.getElementById('inp_what').value.trim();
+  if(!w){ showToast('Please enter what you spent on'); return; }
+  openStep(3);
+}
+function goConfirm(){
+  const wh = document.getElementById('inp_where').value.trim();
+  if(!wh){ showToast('Please enter where you spent'); return; }
+  const date = activeDate || todayStr();
+  document.getElementById('conf_amount').textContent = '₹'+parseFloat(document.getElementById('inp_amount').value).toLocaleString('en-IN',{minimumFractionDigits:2});
+  document.getElementById('conf_what').textContent = document.getElementById('inp_what').value.trim();
+  document.getElementById('conf_where').textContent = document.getElementById('inp_where').value.trim();
+  document.getElementById('conf_date').textContent = fmtDate(date);
+  closeAll(true);
+  document.getElementById('overlayConfirm').classList.add('active');
+}
+function saveEntry(){
+  const amount = parseFloat(document.getElementById('inp_amount').value);
+  const what = document.getElementById('inp_what').value.trim();
+  const where = document.getElementById('inp_where').value.trim();
+  const date = activeDate || todayStr();
+  entries.push({id:getId(), amount, what, where, date});
+  addSuggestion('what', what);
+  addSuggestion('where', where);
+  save(); closeAll(); renderEntries();
+  document.getElementById('inp_amount').value='';
+  document.getElementById('inp_what').value='';
+  document.getElementById('inp_where').value='';
+  showToast('✅ Entry saved!');
+}
+
+// ─── SUGGESTIONS ──────────────────────────────────────────────────────────────
+function addSuggestion(type, val){
+  if(!val) return;
+  suggestions[type] = suggestions[type].filter(s=>s!==val);
+  suggestions[type].unshift(val);
+  save();
+}
+function showSuggestions(type, val){
+  const dd = document.getElementById('sugg_'+type);
+  const matches = suggestions[type].filter(s=>s.toLowerCase().includes(val.toLowerCase()));
+  if(matches.length===0){ dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(s=>`
+    <div class="suggestion-item">
+      <span onclick="selectSuggestion('${type}','${s.replace(/'/g,"\\'")}')">
+        ${s}
+      </span>
+      <button class="suggestion-del" onclick="deleteSuggestion(event,'${type}','${s.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('');
+  dd.style.display='block';
+}
+function selectSuggestion(type, val){
+  document.getElementById('inp_'+type).value = val;
+  document.getElementById('sugg_'+type).style.display='none';
+}
+function deleteSuggestion(e, type, val){
+  e.stopPropagation();
+  suggestions[type] = suggestions[type].filter(s=>s!==val);
+  save();
+  showSuggestions(type, document.getElementById('inp_'+type).value);
+}
+function hideSuggestionsDelayed(type){
+  setTimeout(()=>{ document.getElementById('sugg_'+type).style.display='none'; }, 200);
+}
+
+// ─── EDIT ─────────────────────────────────────────────────────────────────────
+function openEdit(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  editingId = id;
+  document.getElementById('edit_amount').value = e.amount;
+  document.getElementById('edit_what').value = e.what;
+  document.getElementById('edit_where').value = e.where;
+  document.getElementById('edit_date').value = e.date;
+  document.getElementById('overlayEdit').classList.add('active');
+}
+function closeEdit(){
+  document.getElementById('overlayEdit').classList.remove('active');
+  editingId = null;
+}
+function saveEdit(){
+  const e = entries.find(x=>x.id===editingId);
+  if(!e) return;
+  const amt = parseFloat(document.getElementById('edit_amount').value);
+  if(!amt||amt<=0){ showToast('Enter valid amount'); return; }
+  e.amount = amt;
+  e.what = document.getElementById('edit_what').value.trim()||e.what;
+  e.where = document.getElementById('edit_where').value.trim()||e.where;
+  e.date = document.getElementById('edit_date').value||e.date;
+  save(); closeEdit(); renderEntries();
+  showToast('✅ Entry updated!');
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+function openTable(){
+  const tbody = document.getElementById('tableBody');
+  const sorted = [...entries].sort((a,b)=>b.id>a.id?1:-1);
+  if(sorted.length===0){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#606080;padding:30px">No entries yet</td></tr>`;
+  } else {
+    tbody.innerHTML = sorted.map((e,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${fmtDate(e.date)}</td>
+        <td class="amount-cell">₹${parseFloat(e.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td>${e.what}</td>
+        <td>${e.where}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('tableOverlay').classList.add('active');
+}
+function closeTable(){ document.getElementById('tableOverlay').classList.remove('active'); }
+
+// ─── ANALYSIS ─────────────────────────────────────────────────────────────────
+const CHART_COLORS = ['#4a9eff','#ff6b9d','#ffd700','#00d4aa','#ff8c42','#a78bfa','#34d399','#f87171','#60a5fa','#fb923c'];
+
+function openAnalysis(){
+  document.getElementById('analysisOverlay').classList.add('active');
+  renderDaily();
+}
+function closeAnalysis(){
+  document.getElementById('analysisOverlay').classList.remove('active');
+  Object.values(charts).forEach(c=>{ try{ c.destroy(); }catch(e){} });
+  charts = {};
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab_'+tab).classList.add('active');
+  if(tab==='daily') renderDaily();
+  if(tab==='weekly') renderWeekly();
+  if(tab==='monthly') renderMonthly();
+}
+
+// DAILY
+function renderDaily(){
+  const today = todayStr();
+  const todayEntries = entries.filter(e=>e.date===today);
+  const total = todayEntries.reduce((s,e)=>s+parseFloat(e.amount),0);
+  document.getElementById('daily_total').textContent = '₹'+total.toLocaleString('en-IN',{minimumFractionDigits:2});
+  const highest = todayEntries.sort((a,b)=>b.amount-a.amount)[0];
+  if(highest){
+    document.getElementById('daily_highest').textContent = '₹'+parseFloat(highest.amount).toLocaleString('en-IN',{minimumFractionDigits:2});
+    document.getElementById('daily_highest_sub').textContent = highest.what+' · '+highest.where;
+  } else {
+    document.getElementById('daily_highest').textContent='₹0';
+    document.getElementById('daily_highest_sub').textContent='No entries today';
+  }
+  // Pie by What
+  const whatMap={};
+  todayEntries.forEach(e=>{ whatMap[e.what]=(whatMap[e.what]||0)+parseFloat(e.amount); });
+  renderPie('pieWhat', Object.keys(whatMap), Object.values(whatMap));
+  // Pie by Where
+  const whereMap={};
+  todayEntries.forEach(e=>{ whereMap[e.where]=(whereMap[e.where]||0)+parseFloat(e.amount); });
+  renderPie('pieWhere', Object.keys(whereMap), Object.values(whereMap));
+}
+
+function renderPie(id, labels, data){
+  if(charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  if(!labels.length){ ctx.clearRect(0,0,300,300); return; }
+  charts[id] = new Chart(ctx,{
+    type:'pie',
+    data:{
+      labels,
+      datasets:[{data, backgroundColor:CHART_COLORS, borderColor:'#16162a', borderWidth:2}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#a0a0c0',font:{family:'Poppins',size:12}}}}
+    }
+  });
+}
+
+// WEEKLY
+function renderWeekly(){
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const diff = (day===0?6:day-1); // days since Monday
+  const mon = new Date(now); mon.setDate(now.getDate()-diff);
+  const days=[], labels=[], totals=[], highests=[];
+  for(let i=0;i<7;i++){
+    const d = new Date(mon); d.setDate(mon.getDate()+i);
+    const ds = d.toISOString().split('T')[0];
+    days.push(ds);
+    labels.push(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]);
+    const dayEntries = entries.filter(e=>e.date===ds);
+    totals.push(dayEntries.reduce((s,e)=>s+parseFloat(e.amount),0));
+    const h = dayEntries.sort((a,b)=>b.amount-a.amount)[0];
+    highests.push(h||null);
+  }
+  const weekTotal = totals.reduce((s,v)=>s+v,0);
+  document.getElementById('weekly_total').textContent = '₹'+weekTotal.toLocaleString('en-IN',{minimumFractionDigits:2});
+
+  if(charts['barWeekly']) charts['barWeekly'].destroy();
+  const ctx = document.getElementById('barWeekly').getContext('2d');
+  charts['barWeekly'] = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{label:'₹ Spent', data:totals, backgroundColor:'rgba(74,158,255,0.7)', borderColor:'#4a9eff', borderWidth:1, borderRadius:6}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#a0a0c0',font:{family:'Poppins'}}, grid:{color:'#1e1e36'}},
+        y:{ticks:{color:'#a0a0c0',font:{family:'Poppins'},callback:v=>'₹'+v}, grid:{color:'#1e1e36'}}
+      }
+    }
+  });
+
+  const hl = document.getElementById('weekly_highest_list');
+  hl.innerHTML = labels.map((l,i)=>`
+    <div class="highest-item">
+      <span class="highest-day">${l} <span style="font-size:.72rem;color:#404060">${fmtDate(days[i])}</span></span>
+      <span>
+        <span class="highest-amt">${highests[i]?'₹'+parseFloat(highests[i].amount).toLocaleString('en-IN',{minimumFractionDigits:2}):'—'}</span>
+        ${highests[i]?`<div class="highest-detail">${highests[i].what} · ${highests[i].where}</div>`:''}
+      </span>
+    </div>`).join('');
+}
+
+// MONTHLY
+function renderMonthly(){
+  const now = new Date();
+  now.setMonth(now.getMonth()+currentMonthOffset);
+  const yr = now.getFullYear(), mo = now.getMonth();
+  const daysInMonth = new Date(yr,mo+1,0).getDate();
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthLabel').textContent = monthNames[mo]+' '+yr;
+
+  const labels=[], totals=[], highests=[];
+  for(let d=1;d<=daysInMonth;d++){
+    const ds = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    labels.push(d);
+    const dayEntries = entries.filter(e=>e.date===ds);
+    totals.push(dayEntries.reduce((s,e)=>s+parseFloat(e.amount),0));
+    const h = [...dayEntries].sort((a,b)=>b.amount-a.amount)[0];
+    highests.push({h,ds});
+  }
+  const monthTotal = totals.reduce((s,v)=>s+v,0);
+  document.getElementById('monthly_total').textContent = '₹'+monthTotal.toLocaleString('en-IN',{minimumFractionDigits:2});
+
+  if(charts['barMonthly']) charts['barMonthly'].destroy();
+  const ctx = document.getElementById('barMonthly').getContext('2d');
+  charts['barMonthly'] = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{label:'₹ Spent', data:totals, backgroundColor:'rgba(74,158,255,0.6)', borderColor:'#4a9eff', borderWidth:1, borderRadius:4}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#a0a0c0',font:{family:'Poppins',size:10}}, grid:{color:'#1e1e36'}},
+        y:{ticks:{color:'#a0a0c0',font:{family:'Poppins'},callback:v=>'₹'+v}, grid:{color:'#1e1e36'}}
+      }
+    }
+  });
+
+  const spendingDays = highests.filter(x=>x.h);
+  const ml = document.getElementById('monthly_highest_list');
+  if(!spendingDays.length){
+    ml.innerHTML=`<div style="color:#606080;font-size:.85rem;text-align:center;padding:16px">No spending this month</div>`;
+    return;
+  }
+  ml.innerHTML = spendingDays.map(({h,ds})=>`
+    <div class="highest-item">
+      <span class="highest-day">${fmtDate(ds)}</span>
+      <span>
+        <span class="highest-amt">₹${parseFloat(h.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}</span>
+        <div class="highest-detail">${h.what} · ${h.where}</div>
+      </span>
+    </div>`).join('');
+}
+
+function changeMonth(dir){
+  currentMonthOffset += dir;
+  renderMonthly();
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderEntries();
+</script>
+</body>
+</html>
