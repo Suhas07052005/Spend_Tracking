@@ -262,7 +262,15 @@ tr:hover td{background:#1a1a2e}
   <div class="sync-dot" id="syncDot"></div>
   <span id="syncLabel">connecting…</span>
   <span class="sync-user" id="syncUser"></span>
-  <button class="sync-switch" onclick="switchUser()" title="Switch user">⇄ switch</button>
+  <button class="sync-switch" id="recoverBtn" title="Recover data from old local version" style="color:var(--gold);border:1px solid #ffd70044;border-radius:6px;padding:2px 8px">📦 Recover local data</button>
+  <button class="sync-switch" id="switchUserBtn" title="Switch user">⇄ switch</button>
+</div>
+
+<!-- RECOVER BAR -->
+<div id="recoverBar" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#1a1a10;border-bottom:1px solid #ffd70033;font-size:0.8rem;flex-wrap:wrap">
+  <span style="color:var(--gold);flex:1" id="recoverCount"></span>
+  <button id="recoverYes" style="background:var(--gold);border:none;color:#0f0f1a;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.8rem;font-weight:700">✅ Import to Firebase</button>
+  <button id="recoverNo" style="background:none;border:1px solid #444;color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.8rem">Cancel</button>
 </div>
 
 <!-- NAVBAR -->
@@ -1098,6 +1106,58 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 // ── SETUP INPUT ENTER KEY ─────────────────────────────────────────────────────
 document.getElementById('setupUser').addEventListener('keydown',e=>{ if(e.key==='Enter') startWithUsername(); });
 document.getElementById('setupBtn').addEventListener('click', startWithUsername);
+
+document.getElementById('switchUserBtn').addEventListener('click', switchUser);
+
+document.getElementById('recoverBtn').addEventListener('click', function(){
+  // Scan ALL localStorage keys and look for arrays of spend entries
+  let found = [];
+  let foundKey = '';
+  try {
+    const allKeys = Object.keys(localStorage);
+    // First try known keys
+    const knownKeys = ['st_entries','st2_entries','st3_entries','spendtracker_entries','entries','spend_entries'];
+    for(const k of [...knownKeys, ...allKeys]){
+      try{
+        const raw = localStorage.getItem(k);
+        if(!raw) continue;
+        const parsed = JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length > 0 && parsed[0].amount !== undefined){
+          found = parsed; foundKey = k; break;
+        }
+      }catch(e){}
+    }
+  } catch(e){}
+
+  if(!found.length){
+    toast('❌ No local spend data found in this browser');
+    return;
+  }
+
+  // Show confirm bar
+  const bar = document.getElementById('recoverBar');
+  document.getElementById('recoverCount').textContent = found.length + ' entries found in "' + foundKey + '"';
+  bar.style.display = 'flex';
+  bar._data = found;
+});
+
+document.getElementById('recoverYes').addEventListener('click', function(){
+  const bar = document.getElementById('recoverBar');
+  const found = bar._data || [];
+  if(!found.length) return;
+  // Merge: skip duplicates by id
+  const existingIds = new Set(entries.map(e=>e.id));
+  let added = 0;
+  found.forEach(e=>{ if(!existingIds.has(e.id)){ entries.push(e); added++; } });
+  save();
+  renderEntries();
+  bar.style.display = 'none';
+  toast('✅ ' + added + ' entries recovered and synced to Firebase!');
+});
+
+document.getElementById('recoverNo').addEventListener('click', function(){
+  document.getElementById('recoverBar').style.display = 'none';
+});
 
 // Wire nav buttons (remove reliance on inline onclick for module-scope functions)
 document.getElementById('navHome').addEventListener('click',()=>showView('home'));
